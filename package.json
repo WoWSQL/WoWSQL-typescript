@@ -1,0 +1,65 @@
+{
+  "name": "@wowsql/sdk",
+  "version": "3.4.0",
+  "description": "Official TypeScript/JavaScript SDK for WowSQL - MySQL Backend-as-a-Service with S3 Storage, type-safe queries and fluent API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "prepublishOnly": "npm run build",
+    "publish:patch": "npm version patch && npm publish",
+    "publish:minor": "npm version minor && npm publish",
+    "publish:major": "npm version major && npm publish"
+  },
+  "keywords": [
+    "wowsql",
+    "mysql",
+    "database",
+    "backend-as-a-service",
+    "baas",
+    "api",
+    "rest",
+    "typescript",
+    "javascript",
+    "sdk",
+    "client",
+    "query-builder",
+    "orm",
+    "sql",
+    "aws-rds",
+    "cloud-database",
+    "s3",
+    "storage",
+    "file-upload",
+    "object-storage"
+  ],
+  "author": "WowSQL Team <support@wowsql.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wowsql/wowsql.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wowsql/wowsql/issues"
+  },
+  "homepage": "https://wowsql.com",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "jest": "^29.0.0",
+    "@types/jest": "^29.0.0"
+  }
+}
