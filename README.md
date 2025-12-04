@@ -58,7 +58,7 @@ import { ProjectAuthClient } from '@wowsql/sdk';
 
 const auth = new ProjectAuthClient({
   projectUrl: 'myproject',        // or https://myproject.wowsql.com
-  publicApiKey: 'public-auth-key'
+  apiKey: 'your-anon-key'  // Use anon key for client-side, service key for server-side
 });
 ```
 
@@ -646,30 +646,34 @@ WOWSQL uses **different API keys for different operations**. Understanding which
 
 ### Key Types Overview
 
+## 🔑 Unified Authentication
+
+**✨ One Project = One Set of Keys for ALL Operations**
+
+WOWSQL uses **unified authentication** - the same API keys work for both database operations AND authentication operations.
+
 | Operation Type | Recommended Key | Alternative Key | Used By |
 |---------------|----------------|-----------------|---------|
-| **Database Operations** (CRUD) | Service Role Key (`wowbase_service_...`) | Anonymous Key (`wowbase_anon_...`) | `WOWSQLClient` |
-| **Authentication Operations** (OAuth, sign-in) | Public API Key (`wowbase_auth_...`) | Service Role Key (`wowbase_service_...`) | `ProjectAuthClient` |
+| **Database Operations** (CRUD) | Service Role Key (`wowsql_service_...`) | Anonymous Key (`wowsql_anon_...`) | `WOWSQLClient` |
+| **Authentication Operations** (OAuth, sign-in) | Anonymous Key (`wowsql_anon_...`) | Service Role Key (`wowsql_service_...`) | `ProjectAuthClient` |
 
 ### Where to Find Your Keys
 
-All keys are found in: **WOWSQL Dashboard → Authentication → PROJECT KEYS**
+All keys are found in: **WOWSQL Dashboard → Settings → API Keys** or **Authentication → PROJECT KEYS**
 
-1. **Service Role Key** (`wowbase_service_...`)
+1. **Anonymous Key** (`wowsql_anon_...`) ✨ **Unified Key**
+   - Location: "Anonymous Key (Public)"
+   - Used for: 
+     - ✅ Client-side auth operations (signup, login, OAuth)
+     - ✅ Public/client-side database operations with limited permissions
+   - **Safe to expose** in frontend code (browser, mobile apps)
+
+2. **Service Role Key** (`wowsql_service_...`) ✨ **Unified Key**
    - Location: "Service Role Key (keep secret)"
-   - Used for: Database CRUD operations (recommended for server-side)
-   - Can also be used for authentication operations (fallback)
-   - **Important**: Click the eye icon to reveal this key
-
-2. **Public API Key** (`wowbase_auth_...`)
-   - Location: "Public API Key"
-   - Used for: OAuth, sign-in, sign-up, user management
-   - Recommended for client-side/public authentication flows
-
-3. **Anonymous Key** (`wowbase_anon_...`)
-   - Location: "Anonymous Key"
-   - Used for: Public/client-side database operations with limited permissions
-   - Optional: Use when exposing database access to frontend/client
+   - Used for:
+     - ✅ Server-side auth operations (admin, full access)
+     - ✅ Server-side database operations (full access, bypass RLS)
+   - **NEVER expose** in frontend code - server-side only!
 
 ### Database Operations
 
@@ -681,13 +685,13 @@ import WOWSQLClient from '@wowsql/sdk';
 // Using Service Role Key (recommended for server-side, full access)
 const client = new WOWSQLClient({
   projectUrl: 'myproject',
-  apiKey: 'wowbase_service_your-service-key-here'  // Service Role Key
+  apiKey: 'wowsql_service_your-service-key-here'  // Service Role Key
 });
 
 // Using Anonymous Key (for public/client-side access with limited permissions)
 const client = new WOWSQLClient({
   projectUrl: 'myproject',
-  apiKey: 'wowbase_anon_your-anon-key-here'  // Anonymous Key
+  apiKey: 'wowsql_anon_your-anon-key-here'  // Anonymous Key
 });
 
 // Query data
@@ -696,21 +700,21 @@ const users = await client.table('users').get();
 
 ### Authentication Operations
 
-Use **Public API Key** or **Service Role Key** for authentication:
+**✨ UNIFIED AUTHENTICATION:** Use the **same keys** as database operations!
 
 ```typescript
 import { ProjectAuthClient } from '@wowsql/sdk';
 
-// Using Public API Key (recommended for OAuth, sign-in, sign-up)
+// Using Anonymous Key (recommended for client-side auth operations)
 const auth = new ProjectAuthClient({
   projectUrl: 'myproject',
-  publicApiKey: 'wowbase_auth_your-public-key-here'  // Public API Key
+  apiKey: 'wowsql_anon_your-anon-key-here'  // Same key as database operations!
 });
 
-// Using Service Role Key (can be used for auth operations too)
+// Using Service Role Key (for server-side auth operations)
 const auth = new ProjectAuthClient({
   projectUrl: 'myproject',
-  publicApiKey: 'wowbase_service_your-service-key-here'  // Service Role Key
+  apiKey: 'wowsql_service_your-service-key-here'  // Same key as database operations!
 });
 
 // OAuth authentication
@@ -720,36 +724,42 @@ const { authorizationUrl } = await auth.getOAuthAuthorizationUrl(
 );
 ```
 
+**Note:** The `publicApiKey` parameter is deprecated but still works for backward compatibility. Use `apiKey` instead.
+
 ### Environment Variables
 
 Best practice: Use environment variables for API keys:
 
 ```typescript
+// UNIFIED AUTHENTICATION: Same keys for both operations!
+
 // Database operations - Service Role Key
 const dbClient = new WOWSQLClient({
   projectUrl: process.env.WOWSQL_PROJECT_URL!,
   apiKey: process.env.WOWSQL_SERVICE_ROLE_KEY!  // or WOWSQL_ANON_KEY
 });
 
-// Authentication operations - Public API Key
+// Authentication operations - Use the SAME key!
 const authClient = new ProjectAuthClient({
   projectUrl: process.env.WOWSQL_PROJECT_URL!,
-  publicApiKey: process.env.WOWSQL_PUBLIC_API_KEY!
+  apiKey: process.env.WOWSQL_ANON_KEY!  // Same key for client-side auth
+  // Or use WOWSQL_SERVICE_ROLE_KEY for server-side auth
 });
 ```
 
 ### Key Usage Summary
 
+**✨ UNIFIED AUTHENTICATION:**
 - **`WOWSQLClient`** → Uses **Service Role Key** or **Anonymous Key** for database operations
-- **`ProjectAuthClient`** → Uses **Public API Key** or **Service Role Key** for authentication operations
-- **Service Role Key** can be used for both database AND authentication operations
-- **Public API Key** is specifically for authentication operations only
-- **Anonymous Key** is optional and provides limited permissions for public database access
+- **`ProjectAuthClient`** → Uses **Anonymous Key** (client-side) or **Service Role Key** (server-side) for authentication operations
+- **Same keys work for both** database AND authentication operations! 🎉
+- **Anonymous Key** (`wowsql_anon_...`) → Client-side operations (auth + database)
+- **Service Role Key** (`wowsql_service_...`) → Server-side operations (auth + database)
 
 ### Security Best Practices
 
 1. **Never expose Service Role Key** in client-side code or public repositories
-2. **Use Public API Key** for client-side authentication flows
+2. **Use Anonymous Key** for client-side authentication flows (same key as database operations)
 3. **Use Anonymous Key** for public database access with limited permissions
 4. **Store keys in environment variables**, never hardcode them
 5. **Rotate keys regularly** if compromised
@@ -759,11 +769,11 @@ const authClient = new ProjectAuthClient({
 **Error: "Invalid API key for project"**
 - Ensure you're using the correct key type for the operation
 - Database operations require Service Role Key or Anonymous Key
-- Authentication operations require Public API Key or Service Role Key
+- Authentication operations require Anonymous Key (client-side) or Service Role Key (server-side)
 - Verify the key is copied correctly (no extra spaces)
 
 **Error: "Authentication failed"**
-- Check that you're using Public API Key (not Anonymous Key) for auth operations
+- Check that you're using the correct key: Anonymous Key for client-side, Service Role Key for server-side
 - Verify the project URL matches your dashboard
 - Ensure the key hasn't been revoked or expired
 
@@ -948,7 +958,7 @@ try {
 
 ### Can I use this in the browser?
 
-Yes! The SDK works in both Node.js and browser environments. However, **never expose your Service Role Key in client-side code** for production applications. Use Public API Key for authentication or Anonymous Key for limited database access. For full database operations, use a backend proxy.
+Yes! The SDK works in both Node.js and browser environments. However, **never expose your Service Role Key in client-side code** for production applications. Use **Anonymous Key** for both authentication and limited database access. For full database operations, use a backend proxy with Service Role Key.
 
 ### What about rate limits?
 

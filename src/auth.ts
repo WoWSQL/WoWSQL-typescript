@@ -10,7 +10,16 @@ export interface ProjectAuthClientConfig {
   secure?: boolean;
   /** Request timeout in milliseconds */
   timeout?: number;
-  /** Optional public API key for analytics/future enforcement */
+  /** 
+   * Unified API key - Anonymous Key (wowsql_anon_...) for client-side,
+   * or Service Role Key (wowsql_service_...) for server-side.
+   * UNIFIED AUTHENTICATION: Same key works for both auth and database operations.
+   */
+  apiKey?: string;
+  /** 
+   * @deprecated Use apiKey instead. Kept for backward compatibility.
+   * Unified API key - same as apiKey parameter.
+   */
   publicApiKey?: string;
   /** Custom token storage implementation (defaults to in-memory) */
   storage?: AuthTokenStorage;
@@ -106,12 +115,16 @@ export class ProjectAuthClient {
     this.accessToken = this.storage.getAccessToken();
     this.refreshToken = this.storage.getRefreshToken();
 
+    // UNIFIED AUTHENTICATION: Use apiKey (new) or publicApiKey (deprecated) for backward compatibility
+    const unifiedApiKey = config.apiKey || config.publicApiKey;
+    
     this.client = axios.create({
       baseURL: baseUrl,
       timeout: config.timeout ?? 30000,
       headers: {
         'Content-Type': 'application/json',
-        ...(config.publicApiKey ? { 'X-Wow-Public-Key': config.publicApiKey } : {}),
+        // UNIFIED AUTHENTICATION: Use Authorization header (same as database operations)
+        ...(unifiedApiKey ? { 'Authorization': `Bearer ${unifiedApiKey}` } : {}),
       },
     });
   }
