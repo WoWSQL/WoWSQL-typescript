@@ -312,6 +312,138 @@ console.log(result.affected_rows); // Number of rows deleted
 
 // Is null
 .filter({ column: 'deleted_at', operator: 'is', value: null })
+
+// IN operator (value must be an array)
+.filter('category', 'in', ['electronics', 'books', 'clothing'])
+
+// NOT IN operator
+.filter('status', 'not_in', ['deleted', 'archived'])
+
+// BETWEEN operator (value must be an array of 2 values)
+.filter('price', 'between', [10, 100])
+
+// NOT BETWEEN operator
+.filter('age', 'not_between', [18, 65])
+
+// OR logical operator
+.filter('category', 'eq', 'electronics', 'AND')
+.filter('price', 'gt', 1000, 'OR')  // OR condition
+```
+
+## Advanced Query Features
+
+### GROUP BY and Aggregates
+
+GROUP BY supports both simple column names and SQL expressions with functions. All expressions are validated for security.
+
+#### Basic GROUP BY
+
+```typescript
+// Group by single column
+const result = await client.table("products")
+  .select("category", "COUNT(*) as count", "AVG(price) as avg_price")
+  .groupBy("category")
+  .get();
+
+// Group by multiple columns
+const result = await client.table("sales")
+  .select("region", "category", "SUM(amount) as total")
+  .groupBy(["region", "category"])
+  .get();
+```
+
+#### GROUP BY with Date/Time Functions
+
+```typescript
+// Group by date
+const result = await client.table("orders")
+  .select("DATE(created_at) as date", "COUNT(*) as orders", "SUM(total) as revenue")
+  .groupBy("DATE(created_at)")
+  .orderBy("date", "desc")
+  .get();
+
+// Group by year and month
+const result = await client.table("orders")
+  .select("YEAR(created_at) as year", "MONTH(created_at) as month", "SUM(total) as revenue")
+  .groupBy(["YEAR(created_at)", "MONTH(created_at)"])
+  .get();
+
+// Group by week
+const result = await client.table("orders")
+  .select("WEEK(created_at) as week", "COUNT(*) as orders")
+  .groupBy("WEEK(created_at)")
+  .get();
+```
+
+#### Supported Functions in GROUP BY
+
+**Date/Time:** `DATE()`, `YEAR()`, `MONTH()`, `DAY()`, `WEEK()`, `QUARTER()`, `HOUR()`, `MINUTE()`, `SECOND()`, `DATE_FORMAT()`, `DATE_ADD()`, `DATE_SUB()`, `DATEDIFF()`, `NOW()`, `CURRENT_TIMESTAMP()`, etc.
+
+**String:** `CONCAT()`, `SUBSTRING()`, `LEFT()`, `RIGHT()`, `UPPER()`, `LOWER()`, `LENGTH()`, `TRIM()`, etc.
+
+**Mathematical:** `ROUND()`, `CEIL()`, `FLOOR()`, `ABS()`, `POW()`, `SQRT()`, `MOD()`, etc.
+
+### HAVING Clause
+
+HAVING filters aggregated results after GROUP BY. Supports aggregate functions and comparison operators.
+
+```typescript
+// Filter aggregated results
+const result = await client.table("products")
+  .select("category", "COUNT(*) as count")
+  .groupBy("category")
+  .having("COUNT(*)", "gt", 10)
+  .get();
+
+// Multiple HAVING conditions
+const result = await client.table("orders")
+  .select("DATE(created_at) as date", "SUM(total) as revenue")
+  .groupBy("DATE(created_at)")
+  .having("SUM(total)", "gt", 1000)
+  .having("COUNT(*)", "gte", 5)
+  .get();
+
+// HAVING with different aggregate functions
+const result = await client.table("products")
+  .select("category", "AVG(price) as avg_price", "COUNT(*) as count")
+  .groupBy("category")
+  .having("AVG(price)", "gt", 100)
+  .having("COUNT(*)", "gte", 5)
+  .get();
+```
+
+**Supported HAVING Operators:** `eq`, `neq`, `gt`, `gte`, `lt`, `lte`
+
+**Supported Aggregate Functions:** `COUNT(*)`, `SUM()`, `AVG()`, `MAX()`, `MIN()`, `GROUP_CONCAT()`, `STDDEV()`, `VARIANCE()`
+
+### Multiple ORDER BY
+
+```typescript
+// Order by multiple columns
+const result = await client.table("products")
+  .select("*")
+  .orderByMultiple([
+    { column: "category", direction: "asc" },
+    { column: "price", direction: "desc" },
+    { column: "created_at", direction: "desc" }
+  ])
+  .get();
+```
+
+### Date/Time Functions
+
+```typescript
+// Filter by date range using functions
+const result = await client.table("orders")
+  .select("*")
+  .filter("created_at", "gte", "DATE_SUB(NOW(), INTERVAL 7 DAY)")
+  .get();
+
+// Group by date
+const result = await client.table("orders")
+  .select("DATE(created_at) as date", "COUNT(*) as count")
+  .groupBy("DATE(created_at)")
+  .get();
 ```
 
 ### Complex Queries

@@ -1,6 +1,6 @@
 {
   "name": "@wowsql/sdk",
-  "version": "3.4.0",
+  "version": "3.7.0",
   "description": "Official TypeScript/JavaScript SDK for WowSQL - MySQL Backend-as-a-Service with S3 Storage, type-safe queries and fluent API",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

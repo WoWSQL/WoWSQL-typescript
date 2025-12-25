@@ -322,6 +322,157 @@ export class ProjectAuthClient {
   }
 
   /**
+   * Send OTP code to user's email.
+   * 
+   * Supports login, signup, and password_reset purposes.
+   * 
+   * @param email - User's email address
+   * @param purpose - Purpose of OTP - 'login', 'signup', or 'password_reset' (default: 'login')
+   * @returns Object with success status and message
+   */
+  async sendOtp(email: string, purpose: 'login' | 'signup' | 'password_reset' = 'login'): Promise<{ success: boolean; message: string }> {
+    if (!['login', 'signup', 'password_reset'].includes(purpose)) {
+      throw new WOWSQLError("Purpose must be 'login', 'signup', or 'password_reset'");
+    }
+
+    try {
+      const response = await this.client.post('/otp/send', {
+        email,
+        purpose
+      });
+      return {
+        success: response.data.success ?? true,
+        message: response.data.message ?? 'If that email exists, an OTP code has been sent'
+      };
+    } catch (error) {
+      throw this.toWowError(error);
+    }
+  }
+
+  /**
+   * Verify OTP and complete authentication.
+   * 
+   * For signup: Creates new user if doesn't exist
+   * For login: Authenticates existing user
+   * For password_reset: Updates password if newPassword provided
+   * 
+   * @param email - User's email address
+   * @param otp - 6-digit OTP code
+   * @param purpose - Purpose of OTP - 'login', 'signup', or 'password_reset' (default: 'login')
+   * @param newPassword - Required for password_reset purpose, new password (minimum 8 characters)
+   * @returns AuthResponse with session tokens and user info (for login/signup) or success message (for password_reset)
+   */
+  async verifyOtp(
+    email: string,
+    otp: string,
+    purpose: 'login' | 'signup' | 'password_reset' = 'login',
+    newPassword?: string
+  ): Promise<AuthResponse | { success: boolean; message: string }> {
+    if (!['login', 'signup', 'password_reset'].includes(purpose)) {
+      throw new WOWSQLError("Purpose must be 'login', 'signup', or 'password_reset'");
+    }
+
+    if (purpose === 'password_reset' && !newPassword) {
+      throw new WOWSQLError("newPassword is required for password_reset purpose");
+    }
+
+    try {
+      const payload: any = {
+        email,
+        otp,
+        purpose
+      };
+      if (newPassword) {
+        payload.new_password = newPassword;
+      }
+
+      const response = await this.client.post('/otp/verify', payload);
+
+      if (purpose === 'password_reset') {
+        return {
+          success: response.data.success ?? true,
+          message: response.data.message ?? 'Password reset successfully! You can now login with your new password'
+        };
+      }
+
+      const session = this.persistSession(response.data);
+      const user = response.data.user ? mapUser(response.data.user) : undefined;
+      return { user, session };
+    } catch (error) {
+      throw this.toWowError(error);
+    }
+  }
+
+  /**
+   * Send magic link to user's email.
+   * 
+   * Supports login, signup, and email_verification purposes.
+   * 
+   * @param email - User's email address
+   * @param purpose - Purpose of magic link - 'login', 'signup', or 'email_verification' (default: 'login')
+   * @returns Object with success status and message
+   */
+  async sendMagicLink(email: string, purpose: 'login' | 'signup' | 'email_verification' = 'login'): Promise<{ success: boolean; message: string }> {
+    if (!['login', 'signup', 'email_verification'].includes(purpose)) {
+      throw new WOWSQLError("Purpose must be 'login', 'signup', or 'email_verification'");
+    }
+
+    try {
+      const response = await this.client.post('/magic-link/send', {
+        email,
+        purpose
+      });
+      return {
+        success: response.data.success ?? true,
+        message: response.data.message ?? 'If that email exists, a magic link has been sent'
+      };
+    } catch (error) {
+      throw this.toWowError(error);
+    }
+  }
+
+  /**
+   * Verify email using token (from magic link or OTP verification).
+   * 
+   * Marks email as verified and sends welcome email.
+   * 
+   * @param token - Verification token from email
+   * @returns Object with success status, message, and user info
+   */
+  async verifyEmail(token: string): Promise<{ success: boolean; message: string; user?: AuthUser }> {
+    try {
+      const response = await this.client.post('/verify-email', { token });
+      return {
+        success: response.data.success ?? true,
+        message: response.data.message ?? 'Email verified successfully!',
+        user: response.data.user ? mapUser(response.data.user) : undefined
+      };
+    } catch (error) {
+      throw this.toWowError(error);
+    }
+  }
+
+  /**
+   * Resend verification email.
+   * 
+   * Always returns success to prevent email enumeration.
+   * 
+   * @param email - User's email address
+   * @returns Object with success status and message
+   */
+  async resendVerification(email: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await this.client.post('/resend-verification', { email });
+      return {
+        success: response.data.success ?? true,
+        message: response.data.message ?? 'If that email exists, a verification email has been sent'
+      };
+    } catch (error) {
+      throw this.toWowError(error);
+    }
+  }
+
+  /**
    * Get the current session tokens.
    */
   getSession(): { accessToken: string | null; refreshToken: string | null } {
